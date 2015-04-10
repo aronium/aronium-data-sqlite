@@ -9,7 +9,7 @@ namespace Aronium.Data.SQLite
     /// Contains methods for handling database operations for specified type.
     /// </summary>
     /// <typeparam name="TEntity">Entity type.</typeparam>
-    public abstract class DataRepository<TEntity> : IDisposable where TEntity : class, new()
+    public abstract class DataRepository<TEntity> : IDisposable, IDataRepository where TEntity : class, new()
     {
         #region - Fields -
 
@@ -24,20 +24,7 @@ namespace Aronium.Data.SQLite
 
         #endregion
 
-        #region - Properties -
-
-        /// <summary>
-        /// Gets {TEntity} entity type.
-        /// </summary>
-        public Type EntityType
-        {
-            get
-            {
-                if (_type == null)
-                    _type = typeof(TEntity);
-                return _type;
-            }
-        }
+        #region - Private properties -
 
         /// <summary>
         /// Gets select query for entity type.
@@ -57,7 +44,29 @@ namespace Aronium.Data.SQLite
 
                 return _selectQuery;
             }
+        } 
+
+        #endregion
+
+        #region - Properties -
+
+        /// <summary>
+        /// Gets {TEntity} entity type.
+        /// </summary>
+        public Type EntityType
+        {
+            get
+            {
+                if (_type == null)
+                    _type = typeof(TEntity);
+                return _type;
+            }
         }
+
+        /// <summary>
+        /// Gets SQLIte database file path.
+        /// </summary>
+        public string DataFile { get; set; }
 
         #endregion
 
@@ -70,23 +79,6 @@ namespace Aronium.Data.SQLite
         private IEnumerable<string> GetEntityPropertyNames()
         {
             return EntityType.GetProperties().Where(x => x.CanWrite && !x.GetSetMethod().IsVirtual).Select(x => x.Name);
-        }
-
-        /// <summary>
-        /// Dispose object.
-        /// </summary>
-        /// <param name="disposing">Value indicating whether disposal is in progress.</param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    // Dispose objects...
-                }
-            }
-
-            _disposed = true;
         }
 
         /// <summary>
@@ -119,6 +111,23 @@ namespace Aronium.Data.SQLite
         /// <param name="entity"></param>
         protected virtual void OnAfterDelete(object id) { }
 
+        /// <summary>
+        /// Dispose object.
+        /// </summary>
+        /// <param name="disposing">Value indicating whether disposal is in progress.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose objects...
+                }
+            }
+
+            _disposed = true;
+        }
+
         #endregion
 
         #region - Public methods -
@@ -130,7 +139,7 @@ namespace Aronium.Data.SQLite
         /// <returns>True if inserted succesfully, otherwise false.</returns>
         public bool Insert(TEntity entity)
         {
-            using (var connector = new Connector())
+            using (var connector = new Connector(this.DataFile))
             {
                 var properties = GetEntityPropertyNames();
 
@@ -154,6 +163,10 @@ namespace Aronium.Data.SQLite
                     {
                         propertyValue = (int)propertyValue;
                     }
+                    else if (propertyValue is Guid)
+                    {
+                        propertyValue = propertyValue.ToString();
+                    }
 
                     parameters.Add(new SQLiteQueryParameter(prop, propertyValue));
                 }
@@ -172,7 +185,7 @@ namespace Aronium.Data.SQLite
         /// <returns>Entity list.</returns>
         public IEnumerable<TEntity> All()
         {
-            using (var connector = new Connector())
+            using (var connector = new Connector(DataFile))
             {
                 foreach (var entity in connector.Select<TEntity>(SelectQueryString))
                 {
@@ -190,7 +203,7 @@ namespace Aronium.Data.SQLite
         /// <returns>Entity instance.</returns>
         public TEntity GetById(object id)
         {
-            using (var connector = new Connector())
+            using (var connector = new Connector(DataFile))
             {
                 var properties = GetEntityPropertyNames();
 
@@ -214,7 +227,7 @@ namespace Aronium.Data.SQLite
         /// <param name="id">Entity id.</param>
         public void Delete(object id)
         {
-            using (var connector = new Connector())
+            using (var connector = new Connector(DataFile))
             {
                 var sql = string.Format(DELETE, EntityType.Name);
 
@@ -232,6 +245,7 @@ namespace Aronium.Data.SQLite
         public void Dispose()
         {
             Dispose(true);
+
             GC.SuppressFinalize(this);
         }
 

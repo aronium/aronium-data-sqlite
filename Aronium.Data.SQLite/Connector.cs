@@ -10,9 +10,43 @@ namespace Aronium.Data.SQLite
     {
         #region - Fields -
         private string _dataFile;
-        private string connectionString;
+        private string _connectionString;
+
+        /// <summary>
+        /// Gets or sets connection string.
+        /// </summary>
+        public string ConnectionString
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    _connectionString = string.Format("data source={0};foreign keys=true;", this.DataFile);
+                }
+                return _connectionString;
+            }
+            set { _connectionString = value; }
+        }
         #endregion
-        
+
+        #region - Constructors -
+
+        /// <summary>
+        /// Initializes new instance of Connector class with specified data file.
+        /// </summary>
+        /// <param name="dataFile">SQLite database file path.</param>
+        public Connector(string dataFile)
+        {
+            if (dataFile == null)
+            {
+                throw new ArgumentNullException("dataFile");
+            }
+
+            this.DataFile = dataFile;
+        }
+
+        #endregion
+
         #region - Properties -
 
         /// <summary>
@@ -25,15 +59,6 @@ namespace Aronium.Data.SQLite
             private set
             {
                 _dataFile = value;
-
-                if (value != null)
-                {
-                    connectionString = string.Format("Data Source={0};Version=3;", value);
-                }
-                else
-                {
-                    connectionString = null;
-                }
             }
         }
 
@@ -81,10 +106,10 @@ namespace Aronium.Data.SQLite
         /// <param name="queryParameters">Query parameters.</param>
         public int Execute(string query, IEnumerable<SQLiteQueryParameter> queryParameters = null)
         {
-            using (var connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(ConnectionString))
             {
                 connection.Open();
-
+                
                 using (SQLiteCommand command = connection.CreateCommand())
                 {
                     command.CommandText = query;
@@ -113,7 +138,7 @@ namespace Aronium.Data.SQLite
         {
             T entity = null;
 
-            using (var connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(ConnectionString))
             {
                 connection.Open();
 
@@ -145,6 +170,11 @@ namespace Aronium.Data.SQLite
                                     val = Convert.ToInt32(val);
                                 }
 
+                                if (val is string && property.PropertyType == typeof(Guid))
+                                {
+                                    val = new Guid((string)val);
+                                }
+
                                 if (property != null)
                                 {
                                     property.SetValue(entity, val == Convert.DBNull ? null : val, null);
@@ -170,7 +200,7 @@ namespace Aronium.Data.SQLite
         /// <remarks>Instance properties are populated from database record using reflection for the speecified type.</remarks>
         public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> queryParameters = null) where T : class, new()
         {
-            using (var connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(ConnectionString))
             {
                 var type = typeof(T);
 
@@ -201,6 +231,11 @@ namespace Aronium.Data.SQLite
                                     val = Convert.ToInt32(val);
                                 }
 
+                                if (val is string && property.PropertyType == typeof(Guid))
+                                {
+                                    val = new Guid((string)val);
+                                }
+
                                 if (property != null)
                                 {
                                     property.SetValue(entity, val == Convert.DBNull ? null : val, null);
@@ -226,7 +261,7 @@ namespace Aronium.Data.SQLite
         /// <returns>List of provided object type.</returns>
         public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> queryParameters, IRowMapper<T> rowMapper)
         {
-            using (var connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(ConnectionString))
             {
                 connection.Open();
 
@@ -271,7 +306,7 @@ namespace Aronium.Data.SQLite
         {
             bool exists = false;
 
-            using (var connection = new SQLiteConnection(connectionString))
+            using (var connection = new SQLiteConnection(ConnectionString))
             {
                 connection.Open();
 
