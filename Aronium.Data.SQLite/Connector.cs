@@ -109,7 +109,7 @@ namespace Aronium.Data.SQLite
             using (var connection = new SQLiteConnection(ConnectionString))
             {
                 connection.Open();
-                
+
                 using (SQLiteCommand command = connection.CreateCommand())
                 {
                     command.CommandText = query;
@@ -163,20 +163,23 @@ namespace Aronium.Data.SQLite
 
                                 var property = type.GetProperty(reader.GetName(i));
 
-                                // SQLite stores primary keys as Int64
-                                // Standard implementation uses int as id field, which must be converted from Int64 to Int32
-                                if (val is long && property.PropertyType == typeof(Int32))
-                                {
-                                    val = Convert.ToInt32(val);
-                                }
-
-                                if (val is string && property.PropertyType == typeof(Guid))
-                                {
-                                    val = new Guid((string)val);
-                                }
-
                                 if (property != null)
                                 {
+                                    // SQLite stores primary keys as Int64
+                                    // Standard implementation uses int as id field, which must be converted from Int64 to Int32
+                                    if (val is long && property.PropertyType == typeof(Int32))
+                                    {
+                                        val = Convert.ToInt32(val);
+                                    }
+                                    else if (val is long && property.PropertyType == typeof(Decimal))
+                                    {
+                                        val = Convert.ToDecimal(val);
+                                    }
+                                    else if (val is string && property.PropertyType == typeof(Guid))
+                                    {
+                                        val = new Guid((string)val);
+                                    }
+
                                     property.SetValue(entity, val == Convert.DBNull ? null : val, null);
                                 }
                             }
@@ -224,20 +227,30 @@ namespace Aronium.Data.SQLite
 
                                 var property = type.GetProperty(reader.GetName(i));
 
-                                // SQLite stores primary keys as Int64
-                                // Standard implementation uses int as id field, which must be converted from Int64 to Int32
-                                if (val is long && property.PropertyType == typeof(Int32))
-                                {
-                                    val = Convert.ToInt32(val);
-                                }
-
-                                if (val is string && property.PropertyType == typeof(Guid))
-                                {
-                                    val = new Guid((string)val);
-                                }
-
                                 if (property != null)
                                 {
+                                    // SQLite stores primary keys as Int64
+                                    // Standard implementation uses int as id field, which must be converted from Int64 to Int32
+                                    if (val is long && property.PropertyType == typeof(Int32))
+                                    {
+                                        val = Convert.ToInt32(val);
+                                    }
+
+                                    if (property.PropertyType == typeof(Decimal))
+                                    {
+                                        val = Convert.ToDecimal(val);
+                                    }
+                                    
+                                    if (val is string && property.PropertyType == typeof(Guid))
+                                    {
+                                        val = new Guid((string)val);
+                                    }
+
+                                    if (val is string && property.PropertyType == typeof(DateTime))
+                                    {
+                                        val = DateTime.Parse((string)val);
+                                    }
+
                                     property.SetValue(entity, val == Convert.DBNull ? null : val, null);
                                 }
                             }
@@ -336,7 +349,7 @@ namespace Aronium.Data.SQLite
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-        } 
+        }
 
         #endregion
     }
