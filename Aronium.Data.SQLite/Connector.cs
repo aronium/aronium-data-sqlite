@@ -9,13 +9,13 @@ namespace Aronium.Data.SQLite
     public class Connector : IDisposable
     {
         #region - Fields -
+
+        private static readonly string CHECK_TABLE_EXISTS = "SELECT name FROM sqlite_master WHERE type='table' AND name=:TableName;";
+
         private string _dataFile;
         private string _connectionString;
 
-        /// <summary>
-        /// Gets or sets connection string.
-        /// </summary>
-        public string ConnectionString
+        private string ConnectionString
         {
             get
             {
@@ -27,6 +27,7 @@ namespace Aronium.Data.SQLite
             }
             set { _connectionString = value; }
         }
+        
         #endregion
 
         #region - Constructors -
@@ -313,8 +314,11 @@ namespace Aronium.Data.SQLite
             }
         }
 
-        private static readonly string CHECK_TABLE_EXISTS = "SELECT name FROM sqlite_master WHERE type='table' AND name=:TableName;";
-
+        /// <summary>
+        /// Gets a value indicating whether table with specified name exists.
+        /// </summary>
+        /// <param name="tableName">Table name.</param>
+        /// <returns>True if table exists, otherwise false.</returns>
         public bool TableExists(string tableName)
         {
             bool exists = false;
