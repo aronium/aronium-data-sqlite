@@ -18,5 +18,7 @@ namespace Aronium.Data.SQLite
         public string Name { get; set; }
 
         public object Value { get; set; }
+
+        public bool IsOutput { get; set; }
     }
 }

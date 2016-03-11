@@ -9,7 +9,7 @@ namespace Aronium.Data.SQLite
     /// Contains methods for handling database operations for specified type.
     /// </summary>
     /// <typeparam name="TEntity">Entity type.</typeparam>
-    public abstract class DataRepository<TEntity> : IDisposable, IDataRepository where TEntity : class, new()
+    public abstract class DataRepository<TEntity> : Repository, IDataRepository where TEntity : class, new()
     {
         #region - Fields -
 
@@ -63,11 +63,6 @@ namespace Aronium.Data.SQLite
             }
         }
 
-        /// <summary>
-        /// Gets SQLIte database file path.
-        /// </summary>
-        public string DataFile { get; set; }
-
         #endregion
 
         #region - Private methods -
@@ -111,23 +106,6 @@ namespace Aronium.Data.SQLite
         /// <param name="entity"></param>
         protected virtual void OnAfterDelete(object id) { }
 
-        /// <summary>
-        /// Dispose object.
-        /// </summary>
-        /// <param name="disposing">Value indicating whether disposal is in progress.</param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    // Dispose objects...
-                }
-            }
-
-            _disposed = true;
-        }
-
         #endregion
 
         #region - Public methods -
@@ -137,7 +115,7 @@ namespace Aronium.Data.SQLite
         /// </summary>
         /// <param name="entity">Entity to insert.</param>
         /// <returns>True if inserted succesfully, otherwise false.</returns>
-        public bool Insert(TEntity entity)
+        public virtual bool Insert(TEntity entity)
         {
             using (var connector = new Connector(this.DataFile))
             {
@@ -183,7 +161,7 @@ namespace Aronium.Data.SQLite
         /// Gets list of all entities.
         /// </summary>
         /// <returns>Entity list.</returns>
-        public IEnumerable<TEntity> All()
+        public virtual IEnumerable<TEntity> All()
         {
             using (var connector = new Connector(DataFile))
             {
@@ -201,7 +179,7 @@ namespace Aronium.Data.SQLite
         /// </summary>
         /// <param name="id">Entity ID.</param>
         /// <returns>Entity instance.</returns>
-        public TEntity GetById(object id)
+        public virtual TEntity GetById(object id)
         {
             using (var connector = new Connector(DataFile))
             {
@@ -211,7 +189,7 @@ namespace Aronium.Data.SQLite
 
                 var sql = string.Format(SELECT_BY_ID, columns, EntityType.Name);
 
-                var entity = connector.SelectSingle<TEntity>(sql, new[] { 
+                var entity = connector.SelectEntity<TEntity>(sql, new[] { 
                     new SQLiteQueryParameter("ID", id) 
                 });
 
@@ -225,7 +203,7 @@ namespace Aronium.Data.SQLite
         /// Deletes entity.
         /// </summary>
         /// <param name="id">Entity id.</param>
-        public void Delete(object id)
+        public virtual void Delete(object id)
         {
             using (var connector = new Connector(DataFile))
             {
@@ -237,16 +215,6 @@ namespace Aronium.Data.SQLite
 
                 OnAfterDelete(id);
             }
-        }
-
-        /// <summary>
-        /// Dispose object.
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-
-            GC.SuppressFinalize(this);
         }
 
         #endregion

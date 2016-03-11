@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.Linq;
-using System.Text;
 
 namespace Aronium.Data.SQLite
 {
@@ -27,7 +29,7 @@ namespace Aronium.Data.SQLite
             }
             set { _connectionString = value; }
         }
-        
+
         #endregion
 
         #region - Constructors -
@@ -67,13 +69,30 @@ namespace Aronium.Data.SQLite
 
         #region - Private methods -
 
-        private void PrepareCommandParameters(SQLiteCommand command, IEnumerable<SQLiteQueryParameter> queryParameters)
+        private void PrepareCommandParameters(SQLiteCommand command, IEnumerable<SQLiteQueryParameter> args)
         {
-            if (queryParameters != null)
+            if (args != null && args.Any())
             {
-                var commandParameters = queryParameters.Select(x => new SQLiteParameter(x.Name, x.Value));
+                foreach (SQLiteQueryParameter parameter in args)
+                {
+                    if (parameter.Value != null && !(parameter.Value is string) && typeof(IEnumerable).IsAssignableFrom(parameter.Value.GetType()))
+                    {
+                        var parameterName = parameter.Name.Replace("@", string.Empty);
 
-                command.Parameters.AddRange(commandParameters.ToArray());
+                        string replacement = string.Join(",", ((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => string.Format("@{0}__{1}", parameterName, pos)));
+
+                        // Replace original command text with parametrized query
+                        command.CommandText = command.CommandText.Replace(string.Format("@{0}", parameterName), replacement);
+
+                        command.Parameters.AddRange(((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => new SqlParameter(string.Format("@{0}__{1}", parameterName, pos), value ?? DBNull.Value)).ToArray());
+                    }
+                    else
+                    {
+                        var commandParameters = args.Select(x => new SQLiteParameter(x.Name, x.Value ?? DBNull.Value));
+
+                        command.Parameters.AddRange(commandParameters.ToArray());
+                    }
+                }
             }
         }
 
@@ -135,7 +154,7 @@ namespace Aronium.Data.SQLite
         /// <param name="args">Sql Parameters</param>
         /// <returns>Entity instance.</returns>
         /// <remarks>Instance properties are populated from database record using reflection for the given type.</remarks>
-        public T SelectSingle<T>(string query, IEnumerable<SQLiteQueryParameter> queryParameters = null) where T : class, new()
+        public T SelectEntity<T>(string query, IEnumerable<SQLiteQueryParameter> queryParameters = null) where T : class, new()
         {
             T entity = null;
 
@@ -195,6 +214,57 @@ namespace Aronium.Data.SQLite
         }
 
         /// <summary>
+        /// Execute reader and create instance of provided type using IRowMapper interface.
+        /// </summary>
+        /// <typeparam name="T">Type of object to create.</typeparam>
+        /// <param name="args">Sql Parameters.</param>
+        /// <param name="query">Sql Query.</param>
+        /// <param name="rowMapper">IRowMapper used to map object instance from reader.</param>
+        /// <param name="isStoredProcedure">Indicating whether query type is stored procedure.</param>
+        /// <returns>Instance of object type.</returns>
+        public T SelectValue<T>(string query, IEnumerable<SQLiteQueryParameter> args = null, IRowMapper<T> rowMapper = null)
+        {
+            object obj = null;
+
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                using (SQLiteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+
+                    PrepareCommandParameters(command, args);
+
+                    using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleResult))
+                    {
+                        reader.Read();
+
+                        if (reader.HasRows)
+                        {
+                            if (rowMapper != null)
+                            {
+                                obj = rowMapper.Map(reader);
+                            }
+                            else
+                            {
+                                // Used for primitive types
+                                obj = reader[0];
+                            }
+                        }
+
+                        reader.Close();
+                    }
+                }
+            }
+
+            if (obj == null)
+                return default(T);
+
+            return (T)obj;
+        }
+
+        /// <summary>
         /// Gets list of entities.
         /// </summary>
         /// <typeparam name="T">Type of object to create</typeparam>
@@ -241,7 +311,7 @@ namespace Aronium.Data.SQLite
                                     {
                                         val = Convert.ToDecimal(val);
                                     }
-                                    
+
                                     if (val is string && property.PropertyType == typeof(Guid))
                                     {
                                         val = new Guid((string)val);
@@ -310,6 +380,41 @@ namespace Aronium.Data.SQLite
 
                         reader.Close();
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Execute reader and create list of provided type using IRowMapper interface.
+        /// </summary>
+        /// <typeparam name="T">Type of object to create.</typeparam>
+        /// <param name="query">Sql Query.</param>
+        /// <param name="args">Sql Parameters.</param>
+        /// <param name="extractor">IDataExtractor used to map object instance from reader.</param>
+        /// <param name="isStoredProcedure">indicating if query type is stored procedure.</param>
+        /// <returns>List of provided object type.</returns>
+        public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor)
+        {
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                using (SQLiteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+
+                    PrepareCommandParameters(command, args);
+
+                    IEnumerable<T> result;
+
+                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    {
+                        result = extractor.Extract(reader);
+
+                        reader.Close();
+                    }
+
+                    return result;
                 }
             }
         }

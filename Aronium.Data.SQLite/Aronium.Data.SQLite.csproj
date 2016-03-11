@@ -44,9 +44,12 @@
   <ItemGroup>
     <Compile Include="Connector.cs" />
     <Compile Include="DataRepository.cs" />
+    <Compile Include="Extensions\DataRecordExtension.cs" />
+    <Compile Include="IDataExtractor.cs" />
     <Compile Include="IDataRepository.cs" />
     <Compile Include="IRowMapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Repository.cs" />
     <Compile Include="SQLiteQueryParameter.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
