@@ -13,6 +13,7 @@ namespace Aronium.Data.SQLite
         #region - Fields -
 
         private static readonly string CHECK_TABLE_EXISTS = "SELECT name FROM sqlite_master WHERE type='table' AND name=:TableName;";
+        private static readonly string LAST_ROW_ID = "SELECT last_insert_rowid()";
 
         private string _dataFile;
         private string _connectionString;
@@ -84,13 +85,11 @@ namespace Aronium.Data.SQLite
                         // Replace original command text with parametrized query
                         command.CommandText = command.CommandText.Replace(string.Format("@{0}", parameterName), replacement);
 
-                        command.Parameters.AddRange(((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => new SqlParameter(string.Format("@{0}__{1}", parameterName, pos), value ?? DBNull.Value)).ToArray());
+                        command.Parameters.AddRange(((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => new SQLiteParameter(string.Format("@{0}__{1}", parameterName, pos), value ?? DBNull.Value)).ToArray());
                     }
                     else
                     {
-                        var commandParameters = args.Select(x => new SQLiteParameter(x.Name, x.Value ?? DBNull.Value));
-
-                        command.Parameters.AddRange(commandParameters.ToArray());
+                        command.Parameters.Add(new SQLiteParameter(parameter.Name, parameter.Value ?? DBNull.Value));
                     }
                 }
             }
@@ -123,8 +122,9 @@ namespace Aronium.Data.SQLite
         /// Executes query against in current database.
         /// </summary>
         /// <param name="query">Command text.</param>
-        /// <param name="queryParameters">Query parameters.</param>
-        public int Execute(string query, IEnumerable<SQLiteQueryParameter> queryParameters = null)
+        /// <param name="args">Query parameters.</param>
+        /// <returns>Number of affected rows.</returns>
+        public int Execute(string query, IEnumerable<SQLiteQueryParameter> args = null)
         {
             using (var connection = new SQLiteConnection(ConnectionString))
             {
@@ -134,14 +134,53 @@ namespace Aronium.Data.SQLite
                 {
                     command.CommandText = query;
 
-                    if (queryParameters != null)
-                    {
-                        var commandParameters = queryParameters.Select(x => new SQLiteParameter(x.Name, x.Value));
-
-                        command.Parameters.AddRange(commandParameters.ToArray());
-                    }
+                    PrepareCommandParameters(command, args);
 
                     return command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes query against in current database and assign row id to specified out parameter.
+        /// </summary>
+        /// <param name="query">Command text.</param>
+        /// <param name="args">Query parameters.</param>
+        /// <param name="rowId">Value to assing last insert row id to.</param>
+        /// <returns>Number of affected rows.</returns>
+        public int Execute(string query, IEnumerable<SQLiteQueryParameter> args, out long rowId)
+        {
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                using (SQLiteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+
+                    PrepareCommandParameters(command, args);
+
+                    var rowsAffected = command.ExecuteNonQuery();
+
+                    #region " Assign ROWID "
+
+                    command.CommandText = LAST_ROW_ID;
+
+                    if (command.Parameters != null)
+                        command.Parameters.Clear();
+
+                    using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleResult))
+                    {
+                        reader.Read();
+
+                        rowId = (long)reader[0];
+
+                        reader.Close();
+                    }
+
+                    #endregion
+
+                    return rowsAffected;
                 }
             }
         }
@@ -154,7 +193,7 @@ namespace Aronium.Data.SQLite
         /// <param name="args">Sql Parameters</param>
         /// <returns>Entity instance.</returns>
         /// <remarks>Instance properties are populated from database record using reflection for the given type.</remarks>
-        public T SelectEntity<T>(string query, IEnumerable<SQLiteQueryParameter> queryParameters = null) where T : class, new()
+        public T SelectEntity<T>(string query, IEnumerable<SQLiteQueryParameter> args = null) where T : class, new()
         {
             T entity = null;
 
@@ -166,7 +205,7 @@ namespace Aronium.Data.SQLite
                 {
                     command.CommandText = query;
 
-                    PrepareCommandParameters(command, queryParameters);
+                    PrepareCommandParameters(command, args);
 
                     using (SQLiteDataReader reader = command.ExecuteReader())
                     {
@@ -269,10 +308,10 @@ namespace Aronium.Data.SQLite
         /// </summary>
         /// <typeparam name="T">Type of object to create</typeparam>
         /// <param name="query">Sql Query</param>
-        /// <param name="queryParameters">Sql query parameters</param>
+        /// <param name="args">Sql query parameters</param>
         /// <returns>List of entities.</returns>
         /// <remarks>Instance properties are populated from database record using reflection for the speecified type.</remarks>
-        public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> queryParameters = null) where T : class, new()
+        public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args = null) where T : class, new()
         {
             using (var connection = new SQLiteConnection(ConnectionString))
             {
@@ -284,7 +323,7 @@ namespace Aronium.Data.SQLite
                 {
                     command.CommandText = query;
 
-                    PrepareCommandParameters(command, queryParameters);
+                    PrepareCommandParameters(command, args);
 
                     using (SQLiteDataReader reader = command.ExecuteReader())
                     {
@@ -340,10 +379,10 @@ namespace Aronium.Data.SQLite
         /// </summary>
         /// <typeparam name="T">Type of object to create.</typeparam>
         /// <param name="query">Sql Query.</param>
-        /// <param name="queryParameters">Sql query parameters.</param>
+        /// <param name="args">Sql query parameters.</param>
         /// <param name="rowMapper">IRowMapper used to map object instance from reader.</param>
         /// <returns>List of provided object type.</returns>
-        public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> queryParameters, IRowMapper<T> rowMapper)
+        public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper)
         {
             using (var connection = new SQLiteConnection(ConnectionString))
             {
@@ -353,7 +392,7 @@ namespace Aronium.Data.SQLite
                 {
                     command.CommandText = query;
 
-                    PrepareCommandParameters(command, queryParameters);
+                    PrepareCommandParameters(command, args);
 
                     using (SQLiteDataReader reader = command.ExecuteReader())
                     {

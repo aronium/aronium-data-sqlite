@@ -186,6 +186,19 @@ namespace Aronium.Data.SQLite
         }
 
         /// <summary>
+        /// Executes specified SQL query and returns number of rows affected assigning last rowid to specifed out parameter.
+        /// </summary>
+        /// <param name="query">SQL query.</param>
+        /// <param name="args">SQL query arguments.</param>
+        /// <param name="rowId">Out parameter to assign last inserted row id.</param>
+        /// <returns>Number of rows affected by the query execution.</returns>
+        protected int Execute(string query, IEnumerable<SQLiteQueryParameter> args, out long rowId)
+        {
+            using (var connector = new Connector(DataFile))
+                return connector.Execute(query, args, out rowId);
+        }
+
+        /// <summary>
         /// Dispose object.
         /// </summary>
         public void Dispose()
