@@ -186,6 +186,46 @@ namespace Aronium.Data.SQLite
         }
 
         /// <summary>
+        /// Executes prepared commands in transaction.
+        /// </summary>
+        /// <param name="commands">Commands to execute in single transaction.</param>
+        public void Execute(IEnumerable<PreparedCommand> commands)
+        {
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        foreach (var preparedCommand in commands)
+                        {
+                            using (SQLiteCommand command = connection.CreateCommand())
+                            {
+                                command.CommandText = preparedCommand.CommandText;
+
+                                PrepareCommandParameters(command, preparedCommand.QueryArguments);
+
+                                command.ExecuteNonQuery();
+                            }
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+
+                        Console.Error.WriteLine(ex);
+
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Gets entity instance.
         /// </summary>
         /// <typeparam name="T">Type of object to create</typeparam>

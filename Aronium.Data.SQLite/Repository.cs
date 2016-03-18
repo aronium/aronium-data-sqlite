@@ -175,6 +175,16 @@ namespace Aronium.Data.SQLite
         /// Executes specified SQL query and returns number of rows affected.
         /// </summary>
         /// <param name="query">SQL query.</param>
+        /// <returns>Number of rows affected by the query execution.</returns>
+        protected int Execute(string query)
+        {
+            return Execute(query, null);
+        }
+
+        /// <summary>
+        /// Executes specified SQL query and returns number of rows affected.
+        /// </summary>
+        /// <param name="query">SQL query.</param>
         /// <param name="args">SQL query arguments.</param>
         /// <returns>Number of rows affected by the query execution.</returns>
         protected int Execute(string query, IEnumerable<SQLiteQueryParameter> args)
@@ -196,6 +206,16 @@ namespace Aronium.Data.SQLite
         {
             using (var connector = new Connector(DataFile))
                 return connector.Execute(query, args, out rowId);
+        }
+
+        /// <summary>
+        /// Execute prepared commands in single transaction.
+        /// </summary>
+        /// <param name="commands">Commands to execute in transaction.</param>
+        protected void Execute(IEnumerable<PreparedCommand> commands)
+        {
+            using (var connector = new Connector(DataFile))
+                connector.Execute(commands);
         }
 
         /// <summary>

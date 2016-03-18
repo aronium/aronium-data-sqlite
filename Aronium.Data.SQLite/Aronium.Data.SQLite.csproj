@@ -48,6 +48,7 @@
     <Compile Include="IDataExtractor.cs" />
     <Compile Include="IDataRepository.cs" />
     <Compile Include="IRowMapper.cs" />
+    <Compile Include="PreparedCommand.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repository.cs" />
     <Compile Include="SQLiteQueryParameter.cs" />
