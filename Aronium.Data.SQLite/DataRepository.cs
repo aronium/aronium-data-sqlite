@@ -21,6 +21,7 @@ namespace Aronium.Data.SQLite
         private static readonly string SELECT = "SELECT {0} FROM [{1}]";
         private static readonly string DELETE = "DELETE FROM [{0}] WHERE ID=:ID";
         private static readonly string SELECT_BY_ID = "SELECT {0} FROM [{1}] WHERE ID=:ID";
+        private static readonly string SELECT_CURRENT_SEQUENCE = "SELECT seq FROM SQLITE_SEQUENCE WHERE name='{0}'";
 
         #endregion
 
@@ -76,6 +77,10 @@ namespace Aronium.Data.SQLite
             return EntityType.GetProperties().Where(x => x.CanWrite && !x.GetSetMethod().IsVirtual).Select(x => x.Name);
         }
 
+        #endregion
+
+        #region - Protected methods -
+
         /// <summary>
         /// Occurs before entity insert.
         /// </summary>
@@ -105,6 +110,15 @@ namespace Aronium.Data.SQLite
         /// </summary>
         /// <param name="entity"></param>
         protected virtual void OnAfterDelete(object id) { }
+
+        /// <summary>
+        /// Gets current sequence for table.
+        /// </summary>
+        /// <returns>Current autoincrement sequence value.</returns>
+        protected long GetCurrentSequence()
+        {
+            return Get<long>(string.Format(SELECT_CURRENT_SEQUENCE, EntityType.Name));
+        }
 
         #endregion
 

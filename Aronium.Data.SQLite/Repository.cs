@@ -7,14 +7,22 @@ namespace Aronium.Data.SQLite
 {
     public class Repository : IDisposable, IDataRepository
     {
+        #region - Fields -
         private bool _disposed;
+        #endregion
+
+        #region - Properties -
 
         /// <summary>
         /// Gets SQLIte database file path.
         /// </summary>
         public string DataFile { get; set; }
 
-        private IEnumerable<T> GetListWithRowMapper<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper)
+        #endregion
+
+        #region - Private methods -
+
+        private IEnumerable<T> GetListUsingRowMapper<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper)
         {
             using (var connector = new Connector(DataFile))
             {
@@ -22,13 +30,17 @@ namespace Aronium.Data.SQLite
             }
         }
 
-        private IEnumerable<T> GetListWithDataExtractor<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor)
+        private IEnumerable<T> GetListUsingDataExtractor<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor)
         {
             using (var connector = new Connector(DataFile))
             {
                 return connector.Select(query, args, extractor);
             }
         }
+
+        #endregion
+
+        #region - Protected methods -
 
         /// <summary>
         /// Dispose object.
@@ -106,7 +118,7 @@ namespace Aronium.Data.SQLite
         /// <returns>List of instances of type <typeparamref name="T"/>.</returns>
         protected IEnumerable<T> GetList<T>(string query)
         {
-            return GetListWithRowMapper<T>(query, null, null);
+            return GetListUsingRowMapper<T>(query, null, null);
         }
 
         /// <summary>
@@ -130,7 +142,7 @@ namespace Aronium.Data.SQLite
         /// <returns>List of instances of type <typeparamref name="T"/>.</returns>
         protected IEnumerable<T> GetList<T>(string query, IEnumerable<SQLiteQueryParameter> args)
         {
-            return GetListWithRowMapper<T>(query, args, null);
+            return GetListUsingRowMapper<T>(query, args, null);
         }
 
         /// <summary>
@@ -143,7 +155,7 @@ namespace Aronium.Data.SQLite
         /// <returns>List of instances of type <typeparamref name="T"/>.</returns>
         protected IEnumerable<T> GetList<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper)
         {
-            return GetListWithRowMapper(query, args, rowMapper);
+            return GetListUsingRowMapper(query, args, rowMapper);
         }
 
         /// <summary>
@@ -168,7 +180,7 @@ namespace Aronium.Data.SQLite
         /// <returns>List of instances of type <typeparamref name="T"/>.</returns>
         protected IEnumerable<T> GetList<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor)
         {
-            return GetListWithDataExtractor(query, args, extractor);
+            return GetListUsingDataExtractor(query, args, extractor);
         }
 
         /// <summary>
@@ -218,6 +230,10 @@ namespace Aronium.Data.SQLite
                 connector.Execute(commands);
         }
 
+        #endregion
+
+        #region - Public methods -
+
         /// <summary>
         /// Dispose object.
         /// </summary>
@@ -226,6 +242,8 @@ namespace Aronium.Data.SQLite
             Dispose(true);
 
             GC.SuppressFinalize(this);
-        }
+        } 
+
+        #endregion
     }
 }
