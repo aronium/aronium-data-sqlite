@@ -81,14 +81,14 @@ namespace Aronium.Data.SQLite
                 {
                     if (parameter.Value != null && !(parameter.Value is string) && typeof(IEnumerable).IsAssignableFrom(parameter.Value.GetType()))
                     {
-                        var parameterName = parameter.Name.Replace("@", string.Empty);
+                        var parameterName = parameter.Name.Replace(":", string.Empty);
 
-                        string replacement = string.Join(",", ((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => string.Format("@{0}__{1}", parameterName, pos)));
+                        string replacement = string.Join(",", ((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => string.Format(":{0}__{1}", parameterName, pos)));
 
                         // Replace original command text with parametrized query
-                        command.CommandText = command.CommandText.Replace(string.Format("@{0}", parameterName), replacement);
+                        command.CommandText = command.CommandText.Replace(string.Format(":{0}", parameterName), replacement);
 
-                        command.Parameters.AddRange(((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => new SQLiteParameter(string.Format("@{0}__{1}", parameterName, pos), value ?? DBNull.Value)).ToArray());
+                        command.Parameters.AddRange(((IEnumerable)parameter.Value).Cast<object>().Select((value, pos) => new SQLiteParameter(string.Format(":{0}__{1}", parameterName, pos), value ?? DBNull.Value)).ToArray());
                     }
                     else
                     {
