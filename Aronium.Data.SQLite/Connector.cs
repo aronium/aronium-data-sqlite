@@ -14,6 +14,7 @@ namespace Aronium.Data.SQLite
 
         private static readonly string CHECK_TABLE_EXISTS = "SELECT name FROM sqlite_master WHERE type='table' AND name=:TableName;";
         private static readonly string LAST_ROW_ID = "SELECT last_insert_rowid()";
+        private static readonly string PRAGMA_TABLE_INFO = "PRAGMA table_info({0})";
 
         private string _dataFile;
         private string _connectionString;
@@ -557,6 +558,32 @@ namespace Aronium.Data.SQLite
             }
 
             return exists;
+        }
+
+        public bool ColumnExists(string tableName, string columnName)
+        {
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                using (SQLiteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = string.Format(PRAGMA_TABLE_INFO, tableName);
+
+                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            if (((string)reader["name"]).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
