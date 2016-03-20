@@ -18,19 +18,6 @@ namespace Aronium.Data.SQLite
         private string _dataFile;
         private string _connectionString;
 
-        private string ConnectionString
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_connectionString))
-                {
-                    _connectionString = string.Format("data source={0};foreign keys=true;", this.DataFile);
-                }
-                return _connectionString;
-            }
-            set { _connectionString = value; }
-        }
-
         #endregion
 
         #region - Constructors -
@@ -64,6 +51,22 @@ namespace Aronium.Data.SQLite
             {
                 _dataFile = value;
             }
+        }
+
+        /// <summary>
+        /// Gets or sets connection string.
+        /// </summary>
+        public string ConnectionString
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    _connectionString = string.Format("data source={0};foreign keys=true;", this.DataFile);
+                }
+                return _connectionString;
+            }
+            set { _connectionString = value; }
         }
 
         #endregion
@@ -130,14 +133,26 @@ namespace Aronium.Data.SQLite
             {
                 connection.Open();
 
-                using (SQLiteCommand command = connection.CreateCommand())
-                {
-                    command.CommandText = query;
+                return Execute(query, args, connection);
+            }
+        }
 
-                    PrepareCommandParameters(command, args);
+        /// <summary>
+        /// Executes query against in current database.
+        /// </summary>
+        /// <param name="query">Command text.</param>
+        /// <param name="args">Query parameters.</param>
+        /// <param name="connection">SQLiteConnection instance to use.</param>
+        /// <returns>Number of affected rows.</returns>
+        public int Execute(string query, IEnumerable<SQLiteQueryParameter> args, SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = query;
 
-                    return command.ExecuteNonQuery();
-                }
+                PrepareCommandParameters(command, args);
+
+                return command.ExecuteNonQuery();
             }
         }
 
@@ -154,34 +169,47 @@ namespace Aronium.Data.SQLite
             {
                 connection.Open();
 
-                using (SQLiteCommand command = connection.CreateCommand())
+                return Execute(query, args, connection, out rowId);
+            }
+        }
+
+        /// <summary>
+        /// Executes query against in current database and assign row id to specified out parameter.
+        /// </summary>
+        /// <param name="query">Command text.</param>
+        /// <param name="args">Query parameters.</param>
+        /// <param name="connection">SQLiteConnection instance to use.</param>
+        /// <param name="rowId">Value to assing last insert row id to.</param>
+        /// <returns>Number of affected rows.</returns>
+        public int Execute(string query, IEnumerable<SQLiteQueryParameter> args, SQLiteConnection connection, out long rowId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = query;
+
+                PrepareCommandParameters(command, args);
+
+                var rowsAffected = command.ExecuteNonQuery();
+
+                #region " Assign ROWID "
+
+                command.CommandText = LAST_ROW_ID;
+
+                if (command.Parameters != null)
+                    command.Parameters.Clear();
+
+                using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleResult))
                 {
-                    command.CommandText = query;
+                    reader.Read();
 
-                    PrepareCommandParameters(command, args);
+                    rowId = (long)reader[0];
 
-                    var rowsAffected = command.ExecuteNonQuery();
-
-                    #region " Assign ROWID "
-
-                    command.CommandText = LAST_ROW_ID;
-
-                    if (command.Parameters != null)
-                        command.Parameters.Clear();
-
-                    using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleResult))
-                    {
-                        reader.Read();
-
-                        rowId = (long)reader[0];
-
-                        reader.Close();
-                    }
-
-                    #endregion
-
-                    return rowsAffected;
+                    reader.Close();
                 }
+
+                #endregion
+
+                return rowsAffected;
             }
         }
 
