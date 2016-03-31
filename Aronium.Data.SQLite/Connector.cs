@@ -104,6 +104,15 @@ namespace Aronium.Data.SQLite
         #region - Public methods -
 
         /// <summary>
+        /// Gets new instance of <see cref="SQLiteConnection"/> using standard conection string.
+        /// </summary>
+        /// <returns>Connection instance.</returns>
+        public SQLiteConnection GetConnection()
+        {
+            return new SQLiteConnection(ConnectionString);
+        }
+
+        /// <summary>
         /// Attempts to connect to database.
         /// </summary>
         /// <param name="fileName">Database file name.</param>
@@ -295,11 +304,11 @@ namespace Aronium.Data.SQLite
                                 {
                                     // SQLite stores primary keys as Int64
                                     // Standard implementation uses int as id field, which must be converted from Int64 to Int32
-                                    if (val is long && property.PropertyType == typeof(Int32))
+                                    if (val is long && property.PropertyType == typeof(int))
                                     {
                                         val = Convert.ToInt32(val);
                                     }
-                                    else if (val is long && property.PropertyType == typeof(Decimal))
+                                    else if (val is long && property.PropertyType == typeof(decimal))
                                     {
                                         val = Convert.ToDecimal(val);
                                     }
@@ -410,12 +419,12 @@ namespace Aronium.Data.SQLite
                                 {
                                     // SQLite stores primary keys as Int64
                                     // Standard implementation uses int as id field, which must be converted from Int64 to Int32
-                                    if (val is long && property.PropertyType == typeof(Int32))
+                                    if (val is long && property.PropertyType == typeof(int))
                                     {
                                         val = Convert.ToInt32(val);
                                     }
 
-                                    if (property.PropertyType == typeof(Decimal))
+                                    if (property.PropertyType == typeof(decimal))
                                     {
                                         val = Convert.ToDecimal(val);
                                     }
@@ -560,6 +569,12 @@ namespace Aronium.Data.SQLite
             return exists;
         }
 
+        /// <summary>
+        /// Gets a value indicating whether specified table contains column with specified name.
+        /// </summary>
+        /// <param name="tableName">table name.</param>
+        /// <param name="columnName">Column to search.</param>
+        /// <returns>True if table contains column, otherwise false.</returns>
         public bool ColumnExists(string tableName, string columnName)
         {
             using (var connection = new SQLiteConnection(ConnectionString))

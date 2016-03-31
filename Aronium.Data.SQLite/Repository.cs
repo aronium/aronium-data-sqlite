@@ -14,9 +14,9 @@ namespace Aronium.Data.SQLite
         #region - Properties -
 
         /// <summary>
-        /// Gets SQLIte database file path.
+        /// Gets SQLite database file path.
         /// </summary>
-        public string DataFile { get; set; }
+        public virtual string DataFile { get; set; }
 
         #endregion
 
