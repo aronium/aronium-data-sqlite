@@ -16,8 +16,8 @@ namespace Aronium.Data.SQLite
         private static readonly string LAST_ROW_ID = "SELECT last_insert_rowid()";
         private static readonly string PRAGMA_TABLE_INFO = "PRAGMA table_info({0})";
 
-        private string _dataFile;
-        private string _connectionString;
+        private static string _dataFile;
+        private static string _connectionString;
 
         #endregion
 
@@ -34,7 +34,7 @@ namespace Aronium.Data.SQLite
                 throw new ArgumentNullException("dataFile");
             }
 
-            this.DataFile = dataFile;
+            DataFile = dataFile;
         }
 
         #endregion
@@ -45,7 +45,7 @@ namespace Aronium.Data.SQLite
         /// Gets database file name.
         /// <para>Property will be set upon successfull connect.</para>
         /// </summary>
-        public string DataFile
+        public static string DataFile
         {
             get { return _dataFile; }
             private set
@@ -57,13 +57,13 @@ namespace Aronium.Data.SQLite
         /// <summary>
         /// Gets or sets connection string.
         /// </summary>
-        public string ConnectionString
+        public static string ConnectionString
         {
             get
             {
                 if (string.IsNullOrEmpty(_connectionString))
                 {
-                    _connectionString = string.Format("data source={0};foreign keys=true;", this.DataFile);
+                    _connectionString = string.Format("data source={0};foreign keys=true;", DataFile);
                 }
                 return _connectionString;
             }
