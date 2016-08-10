@@ -99,6 +99,38 @@ namespace Aronium.Data.SQLite
             }
         }
 
+        private object SelectValueInternal<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper, object obj, SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = query;
+
+                PrepareCommandParameters(command, args);
+
+                using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleResult))
+                {
+                    reader.Read();
+
+                    if (reader.HasRows)
+                    {
+                        if (rowMapper != null)
+                        {
+                            obj = rowMapper.Map(reader);
+                        }
+                        else
+                        {
+                            // Used for primitive types
+                            obj = reader[0];
+                        }
+                    }
+
+                    reader.Close();
+                }
+            }
+
+            return obj;
+        }
+
         #endregion
 
         #region - Public methods -
@@ -337,42 +369,24 @@ namespace Aronium.Data.SQLite
         /// <param name="args">Sql Parameters.</param>
         /// <param name="query">Sql Query.</param>
         /// <param name="rowMapper">IRowMapper used to map object instance from reader.</param>
-        /// <param name="isStoredProcedure">Indicating whether query type is stored procedure.</param>
+        /// <param name="connection">Optional connection parameter. Used for transactional queries.</param>
         /// <returns>Instance of object type.</returns>
-        public T SelectValue<T>(string query, IEnumerable<SQLiteQueryParameter> args = null, IRowMapper<T> rowMapper = null)
+        public T SelectValue<T>(string query, IEnumerable<SQLiteQueryParameter> args = null, IRowMapper<T> rowMapper = null, SQLiteConnection connection = null)
         {
             object obj = null;
 
-            using (var connection = new SQLiteConnection(ConnectionString))
+            if (connection == null)
             {
-                connection.Open();
-
-                using (SQLiteCommand command = connection.CreateCommand())
+                using (var conn = new SQLiteConnection(ConnectionString))
                 {
-                    command.CommandText = query;
+                    conn.Open();
 
-                    PrepareCommandParameters(command, args);
-
-                    using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleResult))
-                    {
-                        reader.Read();
-
-                        if (reader.HasRows)
-                        {
-                            if (rowMapper != null)
-                            {
-                                obj = rowMapper.Map(reader);
-                            }
-                            else
-                            {
-                                // Used for primitive types
-                                obj = reader[0];
-                            }
-                        }
-
-                        reader.Close();
-                    }
+                    obj = SelectValueInternal(query, args, rowMapper, obj, conn);
                 }
+            }
+            else
+            {
+                obj = SelectValueInternal(query, args, rowMapper, obj, connection);
             }
 
             if (obj == null)

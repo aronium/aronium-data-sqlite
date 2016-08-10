@@ -40,5 +40,10 @@ namespace Aronium.Data.SQLite
         {
             return new[] { new SQLiteQueryParameter(name, value) };
         }
+
+        public override string ToString()
+        {
+            return Name ?? base.ToString();
+        }
     }
 }
