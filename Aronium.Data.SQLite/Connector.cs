@@ -8,6 +8,9 @@ using System.Linq;
 
 namespace Aronium.Data.SQLite
 {
+    /// <summary>
+    /// Class responsible for executing actual SQL queries agains SQLite database.
+    /// </summary>
     public class Connector : IDisposable
     {
         #region - Fields -
@@ -522,7 +525,6 @@ namespace Aronium.Data.SQLite
         /// <param name="query">Sql Query.</param>
         /// <param name="args">Sql Parameters.</param>
         /// <param name="extractor">IDataExtractor used to map object instance from reader.</param>
-        /// <param name="isStoredProcedure">indicating if query type is stored procedure.</param>
         /// <returns>List of provided object type.</returns>
         public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor)
         {

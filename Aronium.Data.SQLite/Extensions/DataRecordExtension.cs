@@ -30,6 +30,11 @@ namespace Aronium.Data.SQLite
             return record.IsDBNull(ordinal) ? 0M : record.GetDecimal(ordinal);
         }
 
+        public static DateTime? GetNullableDateTime(this IDataRecord record, int ordinal)
+        {
+            return record.IsDBNull(ordinal) ? default(DateTime?) : record.GetDateTime(ordinal);
+        }
+
         public static T GetValueOrDefault<T>(this IDataRecord record, string fieldName)
         {
             return record.GetValueOrDefault<T>(record.GetOrdinal(fieldName));

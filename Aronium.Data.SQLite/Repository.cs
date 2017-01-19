@@ -242,7 +242,7 @@ namespace Aronium.Data.SQLite
             Dispose(true);
 
             GC.SuppressFinalize(this);
-        } 
+        }
 
         #endregion
     }
