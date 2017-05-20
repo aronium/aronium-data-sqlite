@@ -83,7 +83,14 @@ namespace Aronium.Data.SQLite
             {
                 foreach (SQLiteQueryParameter parameter in args)
                 {
-                    if (parameter.Value != null && !(parameter.Value is string) && typeof(IEnumerable).IsAssignableFrom(parameter.Value.GetType()))
+                    if(parameter.Value != null && parameter.Value is byte[])
+                    {
+                        command.Parameters.Add(new SQLiteParameter(parameter.Name, DbType.Binary)
+                        {
+                            Value = parameter.Value
+                        });
+                    }
+                    else if (parameter.Value != null && !(parameter.Value is string) && typeof(IEnumerable).IsAssignableFrom(parameter.Value.GetType()))
                     {
                         var parameterName = parameter.Name.Replace(":", string.Empty);
 

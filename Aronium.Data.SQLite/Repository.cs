@@ -151,7 +151,7 @@ namespace Aronium.Data.SQLite
         /// <typeparam name="T">Type to instantiate.</typeparam>
         /// <param name="query">SQL query.</param>
         /// <param name="args">SQL query arguments.</param>
-        /// <param name="extractor">Row mapper instance used to instantiate specified type.</param>
+        /// <param name="rowMapper">Row mapper instance used to instantiate specified type.</param>
         /// <returns>List of instances of type <typeparamref name="T"/>.</returns>
         protected IEnumerable<T> GetList<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper)
         {

@@ -2,6 +2,9 @@
 
 namespace Aronium.Data.SQLite
 {
+    /// <summary>
+    /// SQLiteQueryParameter class used to store parameters used for database query.
+    /// </summary>
     public class SQLiteQueryParameter
     {
         /// <summary>
@@ -41,6 +44,10 @@ namespace Aronium.Data.SQLite
             return new[] { new SQLiteQueryParameter(name, value) };
         }
 
+        /// <summary>
+        /// Gets string representation of this instance.
+        /// </summary>
+        /// <returns>Query parmeter name.</returns>
         public override string ToString()
         {
             return Name ?? base.ToString();
