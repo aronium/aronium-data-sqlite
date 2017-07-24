@@ -399,7 +399,7 @@ namespace Aronium.Data.SQLite
                 obj = SelectValueInternal(query, args, rowMapper, obj, connection);
             }
 
-            if (obj == null)
+            if (obj == null || obj == DBNull.Value)
                 return default(T);
 
             return (T)obj;
