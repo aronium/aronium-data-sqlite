@@ -13,7 +13,6 @@ namespace Aronium.Data.SQLite
     {
         #region - Fields -
 
-        private bool _disposed;
         private Type _type;
         private string _selectQuery;
 
