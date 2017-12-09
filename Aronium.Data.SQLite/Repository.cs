@@ -5,6 +5,9 @@ using System.Text;
 
 namespace Aronium.Data.SQLite
 {
+    /// <summary>
+    /// Class used as a data repository.
+    /// </summary>
     public class Repository : IDisposable, IDataRepository
     {
         #region - Fields -

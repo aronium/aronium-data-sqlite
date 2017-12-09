@@ -101,13 +101,13 @@ namespace Aronium.Data.SQLite
         /// <summary>
         /// Occurs before entity is deleted.
         /// </summary>
-        /// <param name="entity"></param>
+        /// <param name="id">Entity id.</param>
         protected virtual void OnBeforeDelete(object id) { }
 
         /// <summary>
         /// Occurs after entity is deleted.
         /// </summary>
-        /// <param name="entity"></param>
+        /// <param name="id">Entity id.</param>
         protected virtual void OnAfterDelete(object id) { }
 
         /// <summary>
