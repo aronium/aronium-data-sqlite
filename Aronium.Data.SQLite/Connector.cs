@@ -83,7 +83,7 @@ namespace Aronium.Data.SQLite
             {
                 foreach (SQLiteQueryParameter parameter in args)
                 {
-                    if(parameter.Value != null && parameter.Value is byte[])
+                    if (parameter.Value != null && parameter.Value is byte[])
                     {
                         command.Parameters.Add(new SQLiteParameter(parameter.Name, DbType.Binary)
                         {
@@ -139,6 +139,72 @@ namespace Aronium.Data.SQLite
             }
 
             return obj;
+        }
+
+        private IEnumerable<T> SelectInternal<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor, SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = query;
+
+                PrepareCommandParameters(command, args);
+
+                IEnumerable<T> result;
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    result = extractor.Extract(reader);
+
+                    reader.Close();
+                }
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Execute reader and create list of provided type using IRowMapper interface.
+        /// </summary>
+        /// <typeparam name="T">Type of object to create.</typeparam>
+        /// <param name="query">Sql Query.</param>
+        /// <param name="args">Sql query parameters.</param>
+        /// <param name="rowMapper">IRowMapper used to map object instance from reader.</param>
+        /// <param name="connection">Database connection instance.</param>
+        /// <returns>List of provided object type.</returns>
+        private IEnumerable<T> SelectInternal<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper, SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = query;
+
+                PrepareCommandParameters(command, args);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    var isNullable = Nullable.GetUnderlyingType(typeof(T)) != null;
+
+                    while (reader.Read())
+                    {
+                        if (rowMapper != null)
+                        {
+                            yield return rowMapper.Map(reader);
+                        }
+                        else
+                        {
+                            // Check for null values and return default instance of T (should be nullable)
+                            // If not checked for NULL values, conversion will fail, resulting in InvalidCastException being thrown
+                            if (isNullable && reader[0] == Convert.DBNull)
+                            {
+                                yield return default(T);
+                            }
+                            else
+                                yield return (T)reader[0];
+                        }
+                    }
+
+                    reader.Close();
+                }
+            }
         }
 
         #endregion
@@ -204,7 +270,7 @@ namespace Aronium.Data.SQLite
 
                 PrepareCommandParameters(command, args);
 
-                return command.ExecuteNonQuery();
+                return command.ExecuteNonQuery(); 
             }
         }
 
@@ -490,38 +556,27 @@ namespace Aronium.Data.SQLite
             {
                 connection.Open();
 
-                using (SQLiteCommand command = connection.CreateCommand())
+                foreach (var item in SelectInternal(query, args, rowMapper, connection))
                 {
-                    command.CommandText = query;
-
-                    PrepareCommandParameters(command, args);
-
-                    using (SQLiteDataReader reader = command.ExecuteReader())
-                    {
-                        var isNullable = Nullable.GetUnderlyingType(typeof(T)) != null;
-
-                        while (reader.Read())
-                        {
-                            if (rowMapper != null)
-                            {
-                                yield return rowMapper.Map(reader);
-                            }
-                            else
-                            {
-                                // Check for null values and return default instance of T (should be nullable)
-                                // If not checked for NULL values, conversion will fail, resulting in InvalidCastException being thrown
-                                if (isNullable && reader[0] == Convert.DBNull)
-                                {
-                                    yield return default(T);
-                                }
-                                else
-                                    yield return (T)reader[0];
-                            }
-                        }
-
-                        reader.Close();
-                    }
+                    yield return item;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Execute reader and create list of provided type using IRowMapper interface.
+        /// </summary>
+        /// <typeparam name="T">Type of object to create.</typeparam>
+        /// <param name="query">Sql Query.</param>
+        /// <param name="args">Sql query parameters.</param>
+        /// <param name="rowMapper">IRowMapper used to map object instance from reader.</param>
+        /// <param name="connection">Database connection instance to use.</param>
+        /// <returns>List of provided object type.</returns>
+        public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper, SQLiteConnection connection)
+        {
+            foreach(var item in SelectInternal(query, args, rowMapper, connection))
+            {
+                yield return item;
             }
         }
 
@@ -539,23 +594,27 @@ namespace Aronium.Data.SQLite
             {
                 connection.Open();
 
-                using (SQLiteCommand command = connection.CreateCommand())
+                foreach (var item in SelectInternal(query, args, extractor, connection))
                 {
-                    command.CommandText = query;
-
-                    PrepareCommandParameters(command, args);
-
-                    IEnumerable<T> result;
-
-                    using (SQLiteDataReader reader = command.ExecuteReader())
-                    {
-                        result = extractor.Extract(reader);
-
-                        reader.Close();
-                    }
-
-                    return result;
+                    yield return item;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Execute reader and create list of provided type using IRowMapper interface.
+        /// </summary>
+        /// <typeparam name="T">Type of object to create.</typeparam>
+        /// <param name="query">Sql Query.</param>
+        /// <param name="args">Sql Parameters.</param>
+        /// <param name="extractor">IDataExtractor used to map object instance from reader.</param>
+        /// <param name="connection">Database connection instance to use.</param>
+        /// <returns>List of provided object type.</returns>
+        public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor, SQLiteConnection connection)
+        {
+            foreach (var item in SelectInternal(query, args, extractor, connection))
+            {
+                yield return item;
             }
         }
 
