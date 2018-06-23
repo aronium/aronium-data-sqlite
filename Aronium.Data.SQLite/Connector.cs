@@ -529,6 +529,11 @@ namespace Aronium.Data.SQLite
                                         val = DateTime.Parse((string)val);
                                     }
 
+                                    if(property.PropertyType == typeof(bool) && !(val is bool))
+                                    {
+                                        val = Convert.ToBoolean(val);
+                                    }
+
                                     property.SetValue(entity, val == Convert.DBNull ? null : val, null);
                                 }
                             }
