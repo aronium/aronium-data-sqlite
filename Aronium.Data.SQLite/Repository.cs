@@ -41,6 +41,14 @@ namespace Aronium.Data.SQLite
             }
         }
 
+        private IEnumerable<T> GetListUsingDataExtractor<T, P>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T, P> extractor, P extractorArgs)
+        {
+            using (var connector = new Connector(DataFile))
+            {
+                return connector.Select(query, args, extractor, extractorArgs);
+            }
+        }
+
         #endregion
 
         #region - Protected methods -
@@ -184,6 +192,35 @@ namespace Aronium.Data.SQLite
         protected IEnumerable<T> GetList<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor)
         {
             return GetListUsingDataExtractor(query, args, extractor);
+        }
+
+        /// <summary>
+        /// Gets list of specified type <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">Type to instantiate.</typeparam>
+        /// <typeparam name="P">Extractor arguments type.</typeparam>
+        /// <param name="query">SQL query.</param>
+        /// <param name="extractor">Data extractor instance used to instantiate specified type.</param>
+        /// <param name="extractorArgs">Extractor arguments to pass.</param>
+        /// <returns>List of instances of type <typeparamref name="T"/>.</returns>
+        protected IEnumerable<T> GetList<T, P>(string query, IDataExtractor<T, P> extractor, P extractorArgs)
+        {
+            return GetList<T, P>(query, null, extractor, extractorArgs);
+        }
+
+        /// <summary>
+        /// Gets list of specified type <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">Type to instantiate.</typeparam>
+        /// <typeparam name="P">Extractor arguments type.</typeparam>
+        /// <param name="query">SQL query.</param>
+        /// <param name="args">SQL query arguments.</param>
+        /// <param name="extractor">Data extractor instance used to instantiate specified type.</param>
+        /// <param name="extractorArgs">Extractor arguments to pass.</param>
+        /// <returns>List of instances of type <typeparamref name="T"/>.</returns>
+        protected IEnumerable<T> GetList<T, P>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T, P> extractor, P extractorArgs)
+        {
+            return GetListUsingDataExtractor(query, args, extractor, extractorArgs);
         }
 
         /// <summary>

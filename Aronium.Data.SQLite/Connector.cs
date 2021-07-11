@@ -162,6 +162,27 @@ namespace Aronium.Data.SQLite
             }
         }
 
+        private IEnumerable<T> SelectInternal<T, P>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T, P> extractor, P extractorArgs, SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = query;
+
+                PrepareCommandParameters(command, args);
+
+                IEnumerable<T> result;
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    result = extractor.Extract(reader, extractorArgs);
+
+                    reader.Close();
+                }
+
+                return result;
+            }
+        }
+
         /// <summary>
         /// Execute reader and create list of provided type using IRowMapper interface.
         /// </summary>
@@ -586,7 +607,7 @@ namespace Aronium.Data.SQLite
         }
 
         /// <summary>
-        /// Execute reader and create list of provided type using IRowMapper interface.
+        /// Execute reader and create list of provided type using IDataExtractor interface.
         /// </summary>
         /// <typeparam name="T">Type of object to create.</typeparam>
         /// <param name="query">Sql Query.</param>
@@ -607,7 +628,7 @@ namespace Aronium.Data.SQLite
         }
 
         /// <summary>
-        /// Execute reader and create list of provided type using IRowMapper interface.
+        /// Execute reader and create list of provided type using IDataExtractor interface.
         /// </summary>
         /// <typeparam name="T">Type of object to create.</typeparam>
         /// <param name="query">Sql Query.</param>
@@ -618,6 +639,48 @@ namespace Aronium.Data.SQLite
         public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor, SQLiteConnection connection)
         {
             foreach (var item in SelectInternal(query, args, extractor, connection))
+            {
+                yield return item;
+            }
+        }
+
+        /// <summary>
+        /// Execute reader and create list of provided type using IDataExtractor interface.
+        /// </summary>
+        /// <typeparam name="T">Type of object to create.</typeparam>
+        /// <typeparam name="P">Extractor arguments type.</typeparam>
+        /// <param name="query">Sql Query.</param>
+        /// <param name="args">Sql Parameters.</param>
+        /// <param name="extractor">IDataExtractor used to map object instance from reader.</param>
+        /// <param name="extractorArgs">Arguments to pass to extract method.</param>
+        /// <returns>List of provided object type.</returns>
+        public IEnumerable<T> Select<T, P>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T, P> extractor, P extractorArgs)
+        {
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                foreach (var item in SelectInternal(query, args, extractor, extractorArgs, connection))
+                {
+                    yield return item;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Execute reader and create list of provided type using IDataExtractor interface.
+        /// </summary>
+        /// <typeparam name="T">Type of object to create.</typeparam>
+        /// <typeparam name="P">Extractor arguments type.</typeparam>
+        /// <param name="query">Sql Query.</param>
+        /// <param name="args">Sql Parameters.</param>
+        /// <param name="extractor">IDataExtractor used to map object instance from reader.</param>
+        /// <param name="connection">Database connection instance to use.</param>
+        /// <param name="extractorArgs">Arguments to pass to extract method.</param>
+        /// <returns>List of provided object type.</returns>
+        public IEnumerable<T> Select<T, P>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T, P> extractor, P extractorArgs, SQLiteConnection connection)
+        {
+            foreach (var item in SelectInternal(query, args, extractor, extractorArgs, connection))
             {
                 yield return item;
             }
