@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.Linq;
+using System.Security.Cryptography;
 
 namespace Aronium.Data.SQLite
 {
@@ -228,6 +229,40 @@ namespace Aronium.Data.SQLite
             }
         }
 
+        private static T ConvertScalar<T>(object raw)
+        {
+            if (raw == null || raw is DBNull)
+                return default(T);
+
+            var targetType = typeof(T);
+            var underlying = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+            if (underlying == typeof(Guid))
+            {
+                if (raw is Guid g) return (T)(object)g;
+                return (T)(object)new Guid(Convert.ToString(raw));
+            }
+
+            if (underlying == typeof(DateTime))
+            {
+                if (raw is DateTime dt) return (T)(object)dt;
+                return (T)(object)DateTime.Parse(Convert.ToString(raw));
+            }
+
+            if (underlying.IsEnum)
+            {
+                // Works for numeric values (int/long) and for enum underlying types.
+                return (T)Enum.ToObject(underlying, raw);
+            }
+
+            // Covers common cases:
+            // - int <- long (SQLite INTEGER often comes back as Int64)
+            // - decimal <- double/int/long
+            // - bool <- 0/1
+            // - string <- anything convertible
+            return (T)Convert.ChangeType(raw, underlying);
+        }
+
         #endregion
 
         #region - Public methods -
@@ -291,7 +326,7 @@ namespace Aronium.Data.SQLite
 
                 PrepareCommandParameters(command, args);
 
-                return command.ExecuteNonQuery(); 
+                return command.ExecuteNonQuery();
             }
         }
 
@@ -493,6 +528,41 @@ namespace Aronium.Data.SQLite
         }
 
         /// <summary>
+        /// Executes a SQL query and returns scalar values from the first column of each returned row.
+        /// </summary>
+        /// <typeparam name="T">The scalar type to return (e.g. <see cref="int"/>, <see cref="string"/>, <see cref="decimal"/>).</typeparam>
+        /// <param name="query">The SQL query text to execute. The first selected column is used as the scalar value.</param>
+        /// <param name="args">Optional SQL parameters to be added to the parametrized command.</param>
+        /// <returns>A sequence of scalar values.</returns>
+        public IEnumerable<T> SelectValues<T>(string query, IEnumerable<SQLiteQueryParameter> args)
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (string.IsNullOrWhiteSpace(query)) throw new ArgumentException("SQL must not be empty.", nameof(query));
+
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+
+                    PrepareCommandParameters(command, args);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            object raw = reader.IsDBNull(0) ? null : reader.GetValue(0);
+                            yield return ConvertScalar<T>(raw);
+                        }
+                    }
+                }
+
+            }
+        }
+
+        /// <summary>
         /// Gets list of entities.
         /// </summary>
         /// <typeparam name="T">Type of object to create</typeparam>
@@ -550,7 +620,7 @@ namespace Aronium.Data.SQLite
                                         val = DateTime.Parse((string)val);
                                     }
 
-                                    if(property.PropertyType == typeof(bool) && !(val is bool))
+                                    if (property.PropertyType == typeof(bool) && !(val is bool))
                                     {
                                         val = Convert.ToBoolean(val);
                                     }
@@ -600,7 +670,7 @@ namespace Aronium.Data.SQLite
         /// <returns>List of provided object type.</returns>
         public IEnumerable<T> Select<T>(string query, IEnumerable<SQLiteQueryParameter> args, IRowMapper<T> rowMapper, SQLiteConnection connection)
         {
-            foreach(var item in SelectInternal(query, args, rowMapper, connection))
+            foreach (var item in SelectInternal(query, args, rowMapper, connection))
             {
                 yield return item;
             }
@@ -683,6 +753,49 @@ namespace Aronium.Data.SQLite
             foreach (var item in SelectInternal(query, args, extractor, extractorArgs, connection))
             {
                 yield return item;
+            }
+        }
+
+        /// <summary>
+        /// Executes a SQL query and provides an <see cref="IDataReader"/> to the specified handler.
+        /// The handler can read rows using <c>while (reader.Read())</c> and return any computed result.
+        /// </summary>
+        /// <typeparam name="TResult">
+        /// The result type returned by <paramref name="callback"/> (e.g. a list, a single value, or a custom projection).
+        /// </typeparam>
+        /// <param name="query">The SQL query text to execute.</param>
+        /// <param name="args">Optional SQL parameters to add to the command.</param>
+        /// <param name="callback">
+        /// Callback invoked with an open <see cref="IDataReader"/>. The reader is only valid inside this callback.
+        /// </param>
+        /// <returns>The value returned by <paramref name="callback"/>.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="query"/> or <paramref name="callback"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="query"/> is empty or whitespace.
+        /// </exception>
+        public TResult ExecuteReader<TResult>(string query, IEnumerable<SQLiteQueryParameter> args, Func<IDataReader, TResult> callback)
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (string.IsNullOrWhiteSpace(query)) throw new ArgumentException("SQL must not be empty.", nameof(query));
+            if (callback == null) throw new ArgumentNullException(nameof(callback));
+
+            using (var connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+
+                using (SQLiteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = query;
+
+                    PrepareCommandParameters(command, args);
+
+                    using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess))
+                    {
+                        return callback(reader);
+                    }
+                }
             }
         }
 
