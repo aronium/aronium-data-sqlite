@@ -2,10 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.Linq;
-using System.Security.Cryptography;
 
 namespace Aronium.Data.SQLite
 {
@@ -118,28 +116,20 @@ namespace Aronium.Data.SQLite
 
                 PrepareCommandParameters(command, args);
 
-                using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleResult))
+                using (SQLiteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
                 {
-                    reader.Read();
+                    // No rows
+                    if (!reader.Read())
+                        return null;
 
-                    if (reader.HasRows)
-                    {
-                        if (rowMapper != null)
-                        {
-                            obj = rowMapper.Map(reader);
-                        }
-                        else
-                        {
-                            // Used for primitive types
-                            obj = reader[0];
-                        }
-                    }
+                    // If mapper is not null, go this path and use it to create POCO using custom mapping
+                    if (rowMapper != null)
+                        return rowMapper.Map(reader);
 
-                    reader.Close();
+                    // Scalar path for primitive types (first column)
+                    return reader.IsDBNull(0) ? DBNull.Value : reader.GetValue(0);
                 }
             }
-
-            return obj;
         }
 
         private IEnumerable<T> SelectInternal<T>(string query, IEnumerable<SQLiteQueryParameter> args, IDataExtractor<T> extractor, SQLiteConnection connection)
@@ -232,7 +222,7 @@ namespace Aronium.Data.SQLite
         private static T ConvertScalar<T>(object raw)
         {
             if (raw == null || raw is DBNull)
-                return default(T);
+                return HandleMissingValueOrScalar<T>("NULL");
 
             var targetType = typeof(T);
             var underlying = Nullable.GetUnderlyingType(targetType) ?? targetType;
@@ -261,6 +251,19 @@ namespace Aronium.Data.SQLite
             // - bool <- 0/1
             // - string <- anything convertible
             return (T)Convert.ChangeType(raw, underlying);
+        }
+        
+        private static T HandleMissingValueOrScalar<T>(string reason)
+        {
+            var t = typeof(T);
+            var underlying = Nullable.GetUnderlyingType(t);
+
+            // Reference type OR Nullable<T> => allow missing -> default(T) (null)
+            if (!t.IsValueType || underlying != null)
+                return default(T);
+
+            // Non-nullable value type => throw
+            throw new InvalidOperationException($"Expected a non-null scalar value of type '{t.FullName}', but the query returned {reason}.");
         }
 
         #endregion
@@ -521,10 +524,16 @@ namespace Aronium.Data.SQLite
                 obj = SelectValueInternal(query, args, rowMapper, obj, connection);
             }
 
-            if (obj == null || obj == DBNull.Value)
-                return default(T);
+            // obj is null => no rows
+            if (obj == null)
+                return HandleMissingValueOrScalar<T>("no rows");
 
-            return (T)obj;
+            // mapper path returns T already; allow it as-is (could be null)
+            if (rowMapper != null)
+                return (T)obj;
+
+            // scalar path
+            return ConvertScalar<T>(obj);
         }
 
         /// <summary>
