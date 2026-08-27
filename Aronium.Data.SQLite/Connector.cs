@@ -484,6 +484,14 @@ namespace Aronium.Data.SQLite
                                         val = new Guid((string)val);
                                     }
 
+                                    // If the property is an enum or nullable enum and the database value is not null,
+                                    // convert the SQLite integer into an instance of that enum before assigning it.
+                                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                                    if (val != Convert.DBNull && propertyType.IsEnum)
+                                    {
+                                        val = Enum.ToObject(propertyType, val);
+                                    }
+
                                     property.SetValue(entity, val == Convert.DBNull ? null : val, null);
                                 }
                             }
@@ -632,6 +640,14 @@ namespace Aronium.Data.SQLite
                                     if (property.PropertyType == typeof(bool) && !(val is bool))
                                     {
                                         val = Convert.ToBoolean(val);
+                                    }
+
+                                    // If the property is an enum or nullable enum and the database value is not null,
+                                    // convert the SQLite integer into an instance of that enum before assigning it.
+                                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                                    if (val != Convert.DBNull && propertyType.IsEnum)
+                                    {
+                                        val = Enum.ToObject(propertyType, val);
                                     }
 
                                     property.SetValue(entity, val == Convert.DBNull ? null : val, null);
