@@ -469,25 +469,23 @@ namespace Aronium.Data.SQLite
 
                                 if (property != null)
                                 {
+                                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
                                     // SQLite stores primary keys as Int64
                                     // Standard implementation uses int as id field, which must be converted from Int64 to Int32
-                                    if (val is long && property.PropertyType == typeof(int))
+                                    if (val is long && propertyType == typeof(int))
                                     {
                                         val = Convert.ToInt32(val);
                                     }
-                                    else if (val is long && property.PropertyType == typeof(decimal))
+                                    else if (val is long && propertyType == typeof(decimal))
                                     {
                                         val = Convert.ToDecimal(val);
                                     }
-                                    else if (val is string && property.PropertyType == typeof(Guid))
+                                    else if (val is string && propertyType == typeof(Guid))
                                     {
                                         val = new Guid((string)val);
                                     }
-
-                                    // If the property is an enum or nullable enum and the database value is not null,
-                                    // convert the SQLite integer into an instance of that enum before assigning it.
-                                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                                    if (val != Convert.DBNull && propertyType.IsEnum)
+                                    else if (val != Convert.DBNull && propertyType.IsEnum)
                                     {
                                         val = Enum.ToObject(propertyType, val);
                                     }
@@ -615,36 +613,35 @@ namespace Aronium.Data.SQLite
 
                                 if (property != null)
                                 {
+                                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
                                     // SQLite stores primary keys as Int64
                                     // Standard implementation uses int as id field, which must be converted from Int64 to Int32
-                                    if (val is long && property.PropertyType == typeof(int))
+                                    if (val is long && propertyType == typeof(int))
                                     {
                                         val = Convert.ToInt32(val);
                                     }
 
-                                    if (property.PropertyType == typeof(decimal))
+                                    if (val != Convert.DBNull && propertyType == typeof(decimal))
                                     {
                                         val = Convert.ToDecimal(val);
                                     }
 
-                                    if (val is string && property.PropertyType == typeof(Guid))
+                                    if (val is string && propertyType == typeof(Guid))
                                     {
                                         val = new Guid((string)val);
                                     }
 
-                                    if (val is string && property.PropertyType == typeof(DateTime))
+                                    if (val is string && propertyType == typeof(DateTime))
                                     {
                                         val = DateTime.Parse((string)val);
                                     }
 
-                                    if (property.PropertyType == typeof(bool) && !(val is bool))
+                                    if (val != Convert.DBNull && propertyType == typeof(bool) && !(val is bool))
                                     {
                                         val = Convert.ToBoolean(val);
                                     }
 
-                                    // If the property is an enum or nullable enum and the database value is not null,
-                                    // convert the SQLite integer into an instance of that enum before assigning it.
-                                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
                                     if (val != Convert.DBNull && propertyType.IsEnum)
                                     {
                                         val = Enum.ToObject(propertyType, val);
